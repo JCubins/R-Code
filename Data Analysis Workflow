@@ -1,0 +1,119 @@
+Imagine you are an Extension researcher who conducted an experiment last summer using 6 different insecticides to determine which spray was the most effect at decreasing insect damage to raspberries. The experiment was laid out as a randomized complete block design and sprays were administered according to label instructions; water was used as a control treatment. At the end of the season, you counted how many fruit per plot were damaged by insects and have recorded the data as a percent of the total number of raspberries harvested. Now it’s time to analyze the data and draw conclusions about it. Use a linear mixed-effects model to analyze your data and create a publication-grade plot or table to present your results.  
+Note: This is synthesized data, not from an actual experiment, so don’t use it to make any decisions about raspberry maintenance.
+
+## Data-to-figure linear mixed-effects model procedure:
+1. Read in data.
+2. Look at the data and change necessary variables to factors.
+3. Create the model.
+4. Test the model assumptions.
+5. Conduct the mean separation (**only proceed if treatment is significant**).
+6. Summarize data.
+7. Create a bar plot or table with compact letter display values.
+8. Draw conclusions about the data.
+
+### 1. Read in the data
+```{r}
+library(readxl)
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(multcomp)
+library(car)
+library(knitr)
+
+berry <- read_xlsx("~/Documents/UMN/Postdoctoral Associate/IPREFER Summer Class/Modules/Data Analysis Workflow/Day 1- Data Analysis Workflow/berry.xlsx")
+```
+
+### 2. Look at the data and change necessary variables to factors
+```{r}
+summary(berry)
+berry$rep <- as.factor(berry$rep)
+berry$trt <- as.factor(berry$trt)
+summary(berry)
+
+ggplot(berry, aes(trt, damage)) + geom_boxplot()
+```
+
+### 3. Create the model
+```{r}
+berry.lm <- lmer(damage ~ trt + (1|rep), data = berry)
+anova(berry.lm)
+# Treatment had an effect on berry damage
+```
+
+### 4. Test the model assumptions
+```{r}
+standardRes <- residuals(berry.lm)/summary(berry.lm)$sigma
+qqnorm(standardRes, main = "")
+abline(a=0, b=1)
+shapiro.test(standardRes)
+# Data is normally distributed
+
+plot(fitted(berry.lm), rstudent(berry.lm))
+leveneTest(residuals(berry.lm) ~ trt, data = berry)
+# It looks like the variances are normal, but Levene's test says otherwise.
+# I will use a natural log transformation to create a new damage variable to remedy the violation of the variance test and reanalyze the data accordingly.
+
+berry$damage.log <- log(berry$damage)
+berry.lm2 <- lmer(damage.log ~ trt + (1|rep), data = berry)
+anova(berry.lm)
+# Treatment is still significant
+
+standardRes <- residuals(berry.lm2)/summary(berry.lm2)$sigma
+qqnorm(standardRes, main = "")
+abline(a=0, b=1)
+shapiro.test(standardRes)
+# Data is normally distributed
+
+plot(fitted(berry.lm2), rstudent(berry.lm2))
+leveneTest(residuals(berry.lm2) ~ trt, data = berry)
+# The residual variances are now equal
+```
+
+### 5. Conduct the mean separation
+```{r}
+berry.emmeans <- emmeans(berry.lm2, ~ trt)
+cld(berry.emmeans)
+# Now, I will create a vector of the compact letter display in treatment order (1, 2, 3, etc.), so that the letters can be easily added to a bar graph corresponding with each treatment
+
+berry.cld <- c("a", "abc", "bc", "ab", "abc", "ab", "c")
+```
+
+### 6. Summarize the data
+```{r}
+# Need to backtransform the data before presenting it
+berry$damage.back <- exp(berry$damage.log)
+head(berry)
+# The data is exactly the same as before transformation, but it is good practice to do the calculations because the values can change a bit, especially if you have decimals
+
+berry.summary <- berry %>%
+  group_by(trt, Treatment) %>%
+  summarize(mean.damage = mean(damage.back))
+berry.summary
+# Now I have the final dataset to create my figure
+```
+
+### 7. Create a bar plot or table with compact letter display values
+```{r}
+# This is the bare minimum plot
+ggplot(berry.summary, aes(Treatment, mean.damage)) +
+  geom_bar(stat = "identity") +
+  geom_text(label = berry.cld, vjust = c(-0.5))
+
+# This would be my publication grade version of the plot
+ggplot(berry.summary, aes(factor(Treatment, level = c("Water", "Neem oil", "Esfenvalerate", "Spinosad", "Malathion", "Carbaryl", "Permethrin")), mean.damage)) +
+  geom_bar(stat = "identity") +
+  geom_text(label = berry.cld, vjust = c(-0.5)) +
+  theme_classic() +
+  labs(x = "Insecticide", y = "Amount of damaged fruit (%)")
+```
+
+I would just create the table in Word, but this is one way to do it in R.
+```{r}
+berry.table <- data.frame(berry.treatment = c("Water", "Neem oil", "Esfenvalerate", "Spinosad", "Malathion", "Carbaryl", "Permethrin"), round(berry.summary$mean.damage,0), berry.cld = c("a", "ab", "ab", "abc", "abc", "bc", "c") )
+kable(berry.table,col.names=c("Insecticde treatment", "Amount of damaged fruit (%)", "Tukey's HSD"))
+```
+
+### 8. Draw conclusions about the data  
+Based on this experiment, the most effective treatments for keeping insects from damaging raspberries were spinosad, malathion, carbaryl, and permethrin and I would recommend growers to choose between those options when considering an insecticide treatment. Outside of effectiveness, factors to consider when choosing an insecticde may be cost, timing of application, number of application required, and human toxicity. 
