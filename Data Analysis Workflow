@@ -1,3 +1,8 @@
+---
+title: "Data Analysis Workflow Example"
+output: word_document
+---
+
 Imagine you are an Extension researcher who conducted an experiment last summer using 6 different insecticides to determine which spray was the most effect at decreasing insect damage to raspberries. The experiment was laid out as a randomized complete block design and sprays were administered according to label instructions; water was used as a control treatment. At the end of the season, you counted how many fruit per plot were damaged by insects and have recorded the data as a percent of the total number of raspberries harvested. Now it’s time to analyze the data and draw conclusions about it. Use a linear mixed-effects model to analyze your data and create a publication-grade plot or table to present your results.  
 Note: This is synthesized data, not from an actual experiment, so don’t use it to make any decisions about raspberry maintenance.
 
