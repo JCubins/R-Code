@@ -98,7 +98,7 @@ Two of the most common figure types used in academic settings are boxplots and b
   
 Read in the cucumber yield trial dataset.
 ```{r}
-cuke <- read_excel("~/Documents/UMN/Postdoctoral Associate/IPREFER Summer Class/Modules/Data Visualization/Day 2- Basic Visualization/cucumbers.xlsx")
+cuke <- read_excel("~/Documents/cucumbers.xlsx")
 ```
 
 Start by looking at the data using the summary function. This can give you an idea of the types of data in your dataset and the spread of values within each variable.
