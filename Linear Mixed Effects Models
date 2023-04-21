@@ -27,7 +27,7 @@ library(multcomp)
 library(car)
 library(knitr)
 
-berry <- read_xlsx("~/Documents/UMN/Postdoctoral Associate/IPREFER Summer Class/Modules/Data Analysis Workflow/Day 1- Data Analysis Workflow/berry.xlsx")
+berry <- read_xlsx("~/Documents/berry.xlsx")
 ```
 
 ### 2. Look at the data and change necessary variables to factors
