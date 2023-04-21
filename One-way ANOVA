@@ -1,0 +1,146 @@
+You are a researcher studying pennycress. From your prior experiments, you've noticed that pennycress reaches physiological maturity (i.e., maximum dry weight) about two weeks prior to harvest maturity when it can actually be harvested. You know that harvest aids have been used to reduce the time between physiological and harvest maturity in canola and rapeseed (closely related brassica species), would that work in pennycress too? You devised an experiment using a naturally-senescing control and three harvest aids: two chemical desiccants and one mechanical method. After two years of experimentation, you want to analyze your data to better understand the use of harvest aids to facilitate earlier pennycress harvest. Use a one-way ANOVA to test the treatment efficacy at reducing seed and biomass moisture, which are the barriers to early harvest.
+
+Load in the libraries
+```{r}
+library(tidyverse)
+library(agricolae)
+library(car)
+library(readxl)
+```
+  
+## Read in the Non-shatter dataset
+```{r}
+pc <- read_excel("~/Documents/Non-shatter Data.xlsx")
+```
+
+Change categorical treatments to factors.
+```{r}
+pc$rep <- as.factor(pc$rep)
+pc$trt <- as.factor(pc$trt)
+pc$year <- as.factor(pc$year)
+```
+  
+```{r}
+summary(pc)
+```
+Taking a look at the summary for the non-shatter dataset, you can see the spread of the variables.
+
+## Visualize the data
+```{r}
+ggplot(pc, aes(trt, seed)) + geom_boxplot()
+
+ggplot(pc, aes(trt, biomass)) + geom_boxplot()
+```
+Based this figure, it seems as though seed moisture is relatively consistent across treatments whereas biomass moisture is lower in the Diquat and Swath treatments compared to the Control and Defol treatments.
+
+## One-way ANOVA
+### Seed moisture
+Write the linear model using the lm() function. The syntax for the model is lm(dependent variable ~ independent variable(s), dataset)
+```{r}
+seed.lm <- lm(seed ~ trt, pc)
+```
+
+Run your linear model through the anova() function. This will run your model through an analysis of variance.
+```{r}
+anova(seed.lm)
+```
+Based on the anova, treatment is **not** significant! This means that there is no analysis to run and that there are no differences between treatments. If you want to present those results, it still good to run the assumptions for the ANOVA to ensure that the model is a good fit to the data, but the most you can present is the average across treatments.
+
+#### Normally distributed residuals
+```{r}
+# Visual
+qqnorm(rstandard(seed.lm))
+qqline(rstandard(seed.lm))
+
+# Mathematical
+shapiro.test(residuals(seed.lm))
+```
+The data is normally distributed.
+
+#### Homogeneity of variances
+```{r}
+# Visual
+plot(fitted(seed.lm), rstandard(seed.lm))
+
+# Mathemathical
+leveneTest(seed.lm)
+```
+The residuals are homogeneous.
+
+### Biomass moisture
+```{r}
+biomass.lm <- lm(biomass ~ trt, pc)
+```
+
+Run your linear model through the anova() function. This will run your model through an analysis of variance.
+```{r}
+anova(biomass.lm)
+```
+Based on the ANOVA, treatment is significant to the 0.001 level, which means that there is only a 0.1% chance that the differences between treatments is due to random chance. That's great! Now check the assumptions.
+
+#### Normally distributed residuals
+```{r}
+# Visual
+qqnorm(rstandard(biomass.lm))
+qqline(rstandard(biomass.lm))
+
+# Mathematical
+shapiro.test(residuals(biomass.lm))
+```
+The data is normally distributed.
+
+#### Homogeneity of variances
+```{r}
+# Visual
+plot(fitted(biomass.lm), rstandard(biomass.lm))
+
+# Mathemathical
+leveneTest(biomass.lm)
+```
+The residuals are homogeneous.
+
+## Mean separation
+Now that we've found the biomass model is significant **AND** has passed is both assumption tests, we can move forward to the mean separation. Let's use Tukey's HSD for this analysis.
+```{r}
+biomass.HSD <- HSD.test(biomass.lm, "trt")
+biomass.HSD$groups
+```
+  
+## Final visualization
+### Create a summary of the data
+First, we need to group and summarize our data, so we have means for our bar graph.
+```{r}
+pc.summary <- pc %>%
+  group_by(trt) %>%
+  summarize(mean.biomass = mean(biomass))
+
+pc.summary <- data.frame(pc.summary)
+pc.summary
+```
+Notice the inclusion of the data.frame() function. This converts the summary to a data frame, which we can add our letters of significance to. The summary() function typically outputs a tibble, which you cannot add values to.  
+  
+Now, we can add the letters of significance to our summary associated with each treatment. Make sure you create your groups vector in the same order as the summary table! The summary table is typically in alphabetical order.
+```{r}
+biomass.HSD$groups
+# Defol - a
+# Control - ab
+# Diquat - b
+# Swath- c
+
+groups <- c("a", "ab", "b", "c")
+pc.final <- cbind(pc.summary, groups)
+pc.final
+```
+Now you have a data set that includes your treatment name, treatment value, and the associated mean separation group.  
+  
+### Make a bar graph
+```{r}
+ggplot(pc.final, aes(trt, mean.biomass)) +
+  geom_bar(stat = "identity") +
+  geom_text(label = groups, vjust = -0.5) +
+  labs(x = "Harvest aid", y = "Moisture at harvest maturity (%)") +
+  theme_classic()
+```
+Your figure is ready for presentation! The next step is to interpret your results.  
+  
+The Control and Defol treatments had the highest biomass moisture at harvest maturity while the Swath treatment had the greatest reduction in biomass moisture. It may be interesting to explore why the mean Defol moisture is greater than the Control mean while still similar to the Diquat moisture level.
